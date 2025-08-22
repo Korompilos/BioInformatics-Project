@@ -55,17 +55,17 @@ def main():
     print("\n")
 
     # Αποθήκευση datasetA σε αρχείο (για ιι)
-    with open("datasetA.txt", "w") as f:
+    with open("auxiliary2025\\datasetA.txt", "w") as f:
         for seq in datasetA:
             f.write(seq + "\n")
 
      # Αποθήκευση datasetB σε αρχείο (για ιιι)
-    with open("datasetB.txt", "w") as f:
+    with open("auxiliary2025\\datasetB.txt", "w") as f:
         for seq in datasetB:
             f.write(seq + "\n")
 
     # Αποθήκευση datasetC σε αρχείο (για ιν)
-    with open("datasetC.txt", "w") as f:
+    with open("auxiliary2025\\datasetC.txt", "w") as f:
         for seq in datasetC:
             f.write(seq + "\n")        
 
