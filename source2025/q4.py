@@ -7,6 +7,8 @@ from statistics import mean, median
 
 ALPHABET = ["A", "C", "G", "T"]
 ALPHA = 2
+nrand = 20
+seed = 42
 
 
 def read_sequences(path):
@@ -48,17 +50,17 @@ def pairwise_align_with_ops(s1, s2, alpha=2):
     i = j = 0
     for op in ops:
         if op in ("M", "S"):
-            a1.append(s1[i])
-            a2.append(s2[j])
-            i += 1
+            a1.append(s1[i]);
+            a2.append(s2[j]);
+            i += 1;
             j += 1
         elif op == "D":
-            a1.append(s1[i])
-            a2.append("-")
+            a1.append(s1[i]);
+            a2.append("-");
             i += 1
         else:
-            a1.append("-")
-            a2.append(s2[j])
+            a1.append("-");
+            a2.append(s2[j]);
             j += 1
     return "".join(a1), "".join(a2), dp[m][n], "".join(ops)
 
@@ -111,11 +113,10 @@ def resolve_existing(here, user_path, extra_dirs):
 
 def main():
     parser = argparse.ArgumentParser(description="Q4: align datasetC and random sequences to HMM consensus.")
-    parser.add_argument("hmm_json", help="Path to hmm_profile_before.json or hmm_profile_after.json")
+    parser.add_argument("hmm_json", nargs="?", default="../results/hmm_profile_after.json",
+                        help="Path to HMM JSON (default: ../results/hmm_profile_after.json)")
     parser.add_argument("--datasetC", default=None,
                         help="Path to datasetC.txt (default: ../auxiliary2025/datasetC.txt)")
-    parser.add_argument("--nrand", type=int, default=20, help="Number of random sequences (default: 20)")
-    parser.add_argument("--seed", type=int, default=42, help="Random seed (default: 42)")
     parser.add_argument("--out", default="q4_results.json",
                         help="Output JSON file (filename or full path). Default drops under ../results/")
     args = parser.parse_args()
@@ -158,43 +159,26 @@ def main():
     consensus = consensus_from_hmm_emissions(emissions)
     datasetC = read_sequences(c_path)
     c_lengths = [len(s) for s in datasetC]
-    random.seed(args.seed)
-    rnd = random_sequences(args.nrand, min(c_lengths), max(c_lengths)) if c_lengths else []
+    random.seed(seed)
+    rnd = random_sequences(nrand, min(c_lengths), max(c_lengths)) if c_lengths else []
 
-    results = {
-        "consensus": consensus,
-        "datasetC": [],
-        "random": [],
-        "summary": {},
-        "comparison": {},
-        "comment": ""
-    }
+    results = {"consensus": consensus, "datasetC": [], "random": [], "summary": {}, "comparison": {}, "comment": ""}
 
     c_scores = []
     for idx, seq in enumerate(datasetC, 1):
         a1, a2, score, ops = pairwise_align_with_ops(consensus, seq, ALPHA)
         c_scores.append(score)
         results["datasetC"].append({
-            "id": f"C{idx}",
-            "sequence": seq,
-            "alignment1": a1,
-            "alignment2": a2,
-            "score": score,
-            "path": ops
+            "id": f"C{idx}", "sequence": seq, "alignment1": a1, "alignment2": a2, "score": score, "path": ops
         })
 
     r_scores = []
     for idx, seq in enumerate(rnd, 1):
         _, _, score, ops = pairwise_align_with_ops(consensus, seq, ALPHA)
         r_scores.append(score)
-        results["random"].append({
-            "id": f"R{idx}",
-            "sequence": seq,
-            "score": score,
-            "path": ops
-        })
+        results["random"].append({"id": f"R{idx}", "sequence": seq, "score": score, "path": ops})
 
-    c_sum = summarize(c_scores)
+    c_sum = summarize(c_scores);
     r_sum = summarize(r_scores)
     results["summary"]["datasetC"] = c_sum
     results["summary"]["random"] = r_sum
@@ -208,11 +192,10 @@ def main():
         "median_diff": c_median - r_median,
         "mean_ratio": (c_mean / r_mean) if r_mean != 0 else None
     }
-
-    if c_scores and r_scores and c_mean > r_mean:
-        results["comment"] = "datasetC aligns better than random (higher mean score)."
-    else:
-        results["comment"] = "No stronger mean-score advantage observed for datasetC vs random."
+    results["comment"] = (
+        "datasetC aligns better than random (higher mean score)." if (c_scores and r_scores and c_mean > r_mean)
+        else "No stronger mean-score advantage observed for datasetC vs random."
+    )
 
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(results, f, indent=2)
