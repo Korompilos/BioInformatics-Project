@@ -1,6 +1,7 @@
 import json
-import os
 from collections import defaultdict, Counter
+
+from config import DATASET_A_PATH, DATASET_B_PATH, RESULTS_DIR, Q2_ALIGNMENT_PATH, ensure_dirs
 
 ALPHABET = ["A", "C", "G", "T"]
 ALPHA = 2
@@ -24,38 +25,38 @@ def pairwise_align(s1, s2, alpha=2):
     for j in range(1, n + 1):
         dp[0][j] = -a * j
         back[0][j] = (0, j - 1)
-    s1v, s2v = s1, s2
     half = -a / 2
     for i in range(1, m + 1):
-        si = s1v[i - 1]
-        dpi_1 = dp[i - 1]
-        dpi = dp[i]
-        backi = back[i]
+        si = s1[i - 1]
         for j in range(1, n + 1):
-            sc_match = dpi_1[j - 1] + (1 if si == s2v[j - 1] else half)
-            sc_del = dpi_1[j] - a
-            sc_ins = dpi[j - 1] - a
+            sc_match = dp[i - 1][j - 1] + (1 if si == s2[j - 1] else half)
+            sc_del = dp[i - 1][j] - a
+            sc_ins = dp[i][j - 1] - a
             if sc_match >= sc_del and sc_match >= sc_ins:
-                dpi[j] = sc_match
-                backi[j] = (i - 1, j - 1)
+                dp[i][j] = sc_match
+                back[i][j] = (i - 1, j - 1)
             elif sc_del >= sc_ins:
-                dpi[j] = sc_del
-                backi[j] = (i - 1, j)
+                dp[i][j] = sc_del
+                back[i][j] = (i - 1, j)
             else:
-                dpi[j] = sc_ins
-                backi[j] = (i, j - 1)
+                dp[i][j] = sc_ins
+                back[i][j] = (i, j - 1)
     a1, a2 = [], []
     i, j = m, n
     while i > 0 or j > 0:
         pi, pj = back[i][j]
         if pi == i - 1 and pj == j - 1:
-            a1.append(s1v[i - 1]); a2.append(s2v[j - 1])
+            a1.append(s1[i - 1]);
+            a2.append(s2[j - 1])
         elif pi == i - 1:
-            a1.append(s1v[i - 1]); a2.append("-")
+            a1.append(s1[i - 1]);
+            a2.append("-")
         else:
-            a1.append("-"); a2.append(s2v[j - 1])
+            a1.append("-");
+            a2.append(s2[j - 1])
         i, j = pi, pj
-    a1.reverse(); a2.reverse()
+    a1.reverse();
+    a2.reverse()
     return "".join(a1), "".join(a2)
 
 
@@ -98,7 +99,10 @@ def build_profile_hmm_from_alignment(aln, gap_threshold=GAP_THRESHOLD):
     for s in hmm.M_states + hmm.I_states:
         e = hmm.emissions[s]
         lap = LAPLACE
-        e["A"] += lap; e["C"] += lap; e["G"] += lap; e["T"] += lap
+        e["A"] += lap;
+        e["C"] += lap;
+        e["G"] += lap;
+        e["T"] += lap
     legal_next = defaultdict(list)
     for i in range(0, K + 1):
         ii = f"I{i}"
@@ -122,26 +126,27 @@ def build_profile_hmm_from_alignment(aln, gap_threshold=GAP_THRESHOLD):
             lead = row[:mc[0]]
             for ch in lead:
                 if ch != "-":
-                    path.append("I0"); hmm.emissions["I0"][ch] += 1
+                    path.append("I0");
+                    hmm.emissions["I0"][ch] += 1
         else:
             for ch in row:
                 if ch != "-":
-                    path.append("I0"); hmm.emissions["I0"][ch] += 1
+                    path.append("I0");
+                    hmm.emissions["I0"][ch] += 1
         for mi, col in enumerate(mc, start=1):
             ch = row[col]
             if ch == "-":
                 path.append(f"D{mi}")
             else:
-                path.append(f"M{mi}"); hmm.emissions[f"M{mi}"][ch] += 1
+                path.append(f"M{mi}");
+                hmm.emissions[f"M{mi}"][ch] += 1
             next_col = mc[mi] if mi < K else None
             ins_state = f"I{mi}"
-            if next_col is not None:
-                seg = row[col + 1:next_col]
-            else:
-                seg = row[col + 1:]
+            seg = row[col + 1:next_col] if next_col is not None else row[col + 1:]
             for mid_ch in seg:
                 if mid_ch != "-":
-                    path.append(ins_state); hmm.emissions[ins_state][mid_ch] += 1
+                    path.append(ins_state);
+                    hmm.emissions[ins_state][mid_ch] += 1
         path.append("End")
         tr = hmm.transitions
         for a, b in zip(path, path[1:]):
@@ -205,27 +210,23 @@ def pretty_print_emissions(emit_probs):
 
 
 if __name__ == "__main__":
-    here = os.path.dirname(os.path.abspath(__file__))
-    aux_dir = os.path.normpath(os.path.join(here, "..", "auxiliary2025"))
-    datasetA_path = os.path.join(aux_dir, "datasetA.txt")
-    datasetB_path = os.path.join(aux_dir, "datasetB.txt")
-    results_dir = os.path.normpath(os.path.join(here, "..", "results"))
-    os.makedirs(results_dir, exist_ok=True)
-    alignment = read_sequences(datasetA_path)
+    ensure_dirs()
+    align_path = Q2_ALIGNMENT_PATH if Q2_ALIGNMENT_PATH.exists() else DATASET_A_PATH
+    alignment = read_sequences(str(align_path))
     L = len(alignment[0])
     assert all(len(s) == L for s in alignment)
     hmm = build_profile_hmm_from_alignment(alignment, GAP_THRESHOLD)
     emit_probs, trans_probs = hmm.normalize_probs()
     pretty_print_transitions(trans_probs)
     pretty_print_emissions(emit_probs)
-    out_before = os.path.join(results_dir, "hmm_profile_before.json")
+    out_before = RESULTS_DIR / "hmm_profile_before.json"
     with open(out_before, "w", encoding="utf-8") as f:
         json.dump({"emissions": emit_probs, "transitions": trans_probs}, f, indent=2)
-    datasetB = read_sequences(datasetB_path)
+    datasetB = read_sequences(str(DATASET_B_PATH))
     update_hmm_with_datasetB(hmm, emit_probs, datasetB)
     emit_probs, trans_probs = hmm.normalize_probs()
     pretty_print_transitions(trans_probs)
     pretty_print_emissions(emit_probs)
-    out_after = os.path.join(results_dir, "hmm_profile_after.json")
+    out_after = RESULTS_DIR / "hmm_profile_after.json"
     with open(out_after, "w", encoding="utf-8") as f:
         json.dump({"emissions": emit_probs, "transitions": trans_probs}, f, indent=2)

@@ -1,14 +1,18 @@
-import argparse
 import json
-import os
 import random
-import sys
 from statistics import mean, median
+
+from config import (
+    DATASET_C_PATH,
+    ensure_dirs,
+    HMM_PROFILE_AFTER,
+    Q4_RESULTS_PATH,
+)
 
 ALPHABET = ["A", "C", "G", "T"]
 ALPHA = 2
-nrand = 20
-seed = 42
+NRAND = 20
+SEED = 42
 
 
 def read_sequences(path):
@@ -50,17 +54,17 @@ def pairwise_align_with_ops(s1, s2, alpha=2):
     i = j = 0
     for op in ops:
         if op in ("M", "S"):
-            a1.append(s1[i]);
-            a2.append(s2[j]);
-            i += 1;
+            a1.append(s1[i])
+            a2.append(s2[j])
+            i += 1
             j += 1
         elif op == "D":
-            a1.append(s1[i]);
-            a2.append("-");
+            a1.append(s1[i])
+            a2.append("-")
             i += 1
         else:
-            a1.append("-");
-            a2.append(s2[j]);
+            a1.append("-")
+            a2.append(s2[j])
             j += 1
     return "".join(a1), "".join(a2), dp[m][n], "".join(ops)
 
@@ -94,73 +98,20 @@ def summarize(scores):
     }
 
 
-def resolve_existing(here, user_path, extra_dirs):
-    tried = []
-    p = user_path
-    if not os.path.isabs(p):
-        p = os.path.normpath(os.path.join(here, p))
-    tried.append(p)
-    if os.path.isfile(p):
-        return p, tried
-    base = os.path.basename(user_path)
-    for d in extra_dirs:
-        cand = os.path.normpath(os.path.join(here, d, base))
-        tried.append(cand)
-        if os.path.isfile(cand):
-            return cand, tried
-    return None, tried
-
-
 def main():
-    parser = argparse.ArgumentParser(description="Q4: align datasetC and random sequences to HMM consensus.")
-    parser.add_argument("hmm_json", nargs="?", default="../results/hmm_profile_after.json",
-                        help="Path to HMM JSON (default: ../results/hmm_profile_after.json)")
-    parser.add_argument("--datasetC", default=None,
-                        help="Path to datasetC.txt (default: ../auxiliary2025/datasetC.txt)")
-    parser.add_argument("--out", default="q4_results.json",
-                        help="Output JSON file (filename or full path). Default drops under ../results/")
-    args = parser.parse_args()
-
-    here = os.path.dirname(os.path.abspath(__file__))
-
-    hmm_path, tried = resolve_existing(
-        here,
-        args.hmm_json,
-        extra_dirs=["..\\results", "../results", "..\\auxiliary2025", "../auxiliary2025"]
-    )
-    if hmm_path is None:
-        msg = ["Could not find the HMM JSON. Tried:"] + [f" - {t}" for t in tried]
-        print("\n".join(msg), file=sys.stderr)
-        sys.exit(1)
-
-    if args.datasetC:
-        c_path, triedC = resolve_existing(
-            here,
-            args.datasetC,
-            extra_dirs=["..\\auxiliary2025", "../auxiliary2025"]
-        )
-        if c_path is None:
-            msg = ["Could not find datasetC. Tried:"] + [f" - {t}" for t in triedC]
-            print("\n".join(msg), file=sys.stderr)
-            sys.exit(1)
-    else:
-        c_path = os.path.normpath(os.path.join(here, "..", "auxiliary2025", "datasetC.txt"))
-
-    results_dir = os.path.normpath(os.path.join(here, "..", "results"))
-    os.makedirs(results_dir, exist_ok=True)
-    out_path = args.out
-    if not os.path.isabs(out_path) and os.path.dirname(out_path) == "":
-        out_path = os.path.join(results_dir, out_path)
+    ensure_dirs()
+    hmm_path = HMM_PROFILE_AFTER
+    out_path = Q4_RESULTS_PATH
 
     with open(hmm_path, "r", encoding="utf-8") as f:
         profile = json.load(f)
     emissions = profile["emissions"]
 
     consensus = consensus_from_hmm_emissions(emissions)
-    datasetC = read_sequences(c_path)
+    datasetC = read_sequences(str(DATASET_C_PATH))
     c_lengths = [len(s) for s in datasetC]
-    random.seed(seed)
-    rnd = random_sequences(nrand, min(c_lengths), max(c_lengths)) if c_lengths else []
+    random.seed(SEED)
+    rnd = random_sequences(NRAND, min(c_lengths), max(c_lengths)) if c_lengths else []
 
     results = {"consensus": consensus, "datasetC": [], "random": [], "summary": {}, "comparison": {}, "comment": ""}
 
@@ -178,7 +129,7 @@ def main():
         r_scores.append(score)
         results["random"].append({"id": f"R{idx}", "sequence": seq, "score": score, "path": ops})
 
-    c_sum = summarize(c_scores);
+    c_sum = summarize(c_scores)
     r_sum = summarize(r_scores)
     results["summary"]["datasetC"] = c_sum
     results["summary"]["random"] = r_sum
@@ -205,6 +156,7 @@ def main():
     print("Random:", r_sum)
     print("Comparison:", results["comparison"])
     print("Comment:", results["comment"])
+    print(f"[Q4] Wrote: {out_path}")
 
 
 if __name__ == "__main__":
