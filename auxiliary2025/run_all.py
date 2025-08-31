@@ -43,14 +43,21 @@ def main():
     )
     args, unknown = parser.parse_known_args()
 
-    base = Path(__file__).parent
-    viz_dir = base / "visualize"
+    aux_base = Path(__file__).parent
+    project_root = aux_base.parent
+    src_dir = project_root / "source2025"
+    viz_dir = aux_base / "visualize"
 
     for name in ["q1.py", "q2.py", "q3.py", "q4.py"]:
-        p = base / name
+        p = src_dir / name
         if p.exists():
             try:
-                run_script(p, extra_args=unknown, cwd=base, add_to_pythonpath=[str(base)])
+                run_script(
+                    p,
+                    extra_args=unknown,
+                    cwd=src_dir,
+                    add_to_pythonpath=[str(project_root), str(src_dir)]
+                )
             except subprocess.CalledProcessError as e:
                 print(f"[ERROR] {name} exited with {e.returncode}")
                 sys.exit(e.returncode)
@@ -83,8 +90,8 @@ def main():
                     run_script(
                         q3_viz,
                         extra_args=[stage] + unknown,
-                        cwd=base,
-                        add_to_pythonpath=[str(base), str(viz_dir)],
+                        cwd=viz_dir,
+                        add_to_pythonpath=[str(project_root), str(src_dir), str(viz_dir)],
                     )
                 except subprocess.CalledProcessError as e:
                     print(f"[ERROR] visualize_q3.py ({stage}) exited with {e.returncode}")
@@ -95,13 +102,13 @@ def main():
         if not q4_viz.exists():
             print(f"[MISS] Q4 viz not found: {q4_viz}")
         else:
-            print("[OK] Running Q4 visualization with NO arguments (cwd=project root)")
+            print("[OK] Running Q4 visualization with NO arguments (cwd=aux/visualize)")
             try:
                 run_script(
                     q4_viz,
                     extra_args=None,
-                    cwd=base,
-                    add_to_pythonpath=[str(base), str(viz_dir)],
+                    cwd=viz_dir,
+                    add_to_pythonpath=[str(project_root), str(src_dir), str(viz_dir)],
                 )
             except subprocess.CalledProcessError as e:
                 print(f"[ERROR] visualize_q4.py exited with {e.returncode}")

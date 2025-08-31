@@ -1,7 +1,7 @@
 import json
 from collections import defaultdict, Counter
 
-from config import DATASET_A_PATH, DATASET_B_PATH, RESULTS_DIR, Q2_ALIGNMENT_PATH, ensure_dirs
+from config import DATASET_A_PATH, DATASET_B_PATH, JSON_DIR, Q2_ALIGNMENT_PATH, ensure_dirs
 
 ALPHABET = ["A", "C", "G", "T"]
 ALPHA = 2
@@ -219,7 +219,7 @@ if __name__ == "__main__":
     emit_probs, trans_probs = hmm.normalize_probs()
     pretty_print_transitions(trans_probs)
     pretty_print_emissions(emit_probs)
-    out_before = RESULTS_DIR / "hmm_profile_before.json"
+    out_before = JSON_DIR / "hmm_profile_before.json"
     with open(out_before, "w", encoding="utf-8") as f:
         json.dump({"emissions": emit_probs, "transitions": trans_probs}, f, indent=2)
     datasetB = read_sequences(str(DATASET_B_PATH))
@@ -227,6 +227,6 @@ if __name__ == "__main__":
     emit_probs, trans_probs = hmm.normalize_probs()
     pretty_print_transitions(trans_probs)
     pretty_print_emissions(emit_probs)
-    out_after = RESULTS_DIR / "hmm_profile_after.json"
+    out_after = JSON_DIR / "hmm_profile_after.json"
     with open(out_after, "w", encoding="utf-8") as f:
         json.dump({"emissions": emit_probs, "transitions": trans_probs}, f, indent=2)
