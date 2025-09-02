@@ -23,7 +23,7 @@ def read_sequences(p: Path):
         return [l.strip().upper() for l in f if l.strip()]
 
 
-def nw(a, b):
+def pairwise_align(a, b):
     m, n = len(a), len(b)
     dp = [[0] * (n + 1) for _ in range(m + 1)]
     bk = [[0] * (n + 1) for _ in range(m + 1)]
@@ -156,7 +156,7 @@ def guide_tree_blocks(seqs):
     scores = [[0] * n for _ in range(n)]
     for i in range(n):
         for j in range(i + 1, n):
-            _, _, sc = nw(seqs[i], seqs[j])
+            _, _, sc = pairwise_align(seqs[i], seqs[j])
             scores[i][j] = sc;
             scores[j][i] = sc
     clusters = {i: ({'block': [seqs[i]], 'members': [i]}) for i in range(n)}
